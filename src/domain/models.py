@@ -8,9 +8,18 @@ NonEmptyStr100 = Annotated[str, Field(min_length=1, max_length=100)]
 NonEmptyStr200 = Annotated[str, Field(min_length=1, max_length=200)]
 NonEmptyStr500 = Annotated[str, Field(min_length=1, max_length=500)]
 CountryCode = Annotated[str, Field(min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")]
-Money = Annotated[Decimal, Field(max_digits=14, decimal_places=2)]
-# Rate = Annotated[Decimal, Field(max_digits=19, decimal_places=5)]
+Money = Annotated[Decimal, Field(max_digits=19, decimal_places=2)]
+Rate = Annotated[Decimal, Field(max_digits=19, decimal_places=5)]
 Qty = Annotated[Decimal, Field(max_digits=19, decimal_places=5, gt=0)]
+
+class CurrencyCode(StrEnum):
+    USD = "USD"
+    EUR = "EUR"
+    GBP = "GBP"
+    CAD = "CAD"
+    AUD = "AUD"
+    JPY = "JPY"
+
 
 class DomainModel(BaseModel):
     model_config = ConfigDict(
@@ -33,10 +42,11 @@ class Vendor(DomainModel):
     tax_id: str | None = Field(default=None, max_length=50)
 
 class InvoiceLineItem(DomainModel):
+    line_number: int = Field(gt=0)
     description: NonEmptyStr500
     quantity: Qty
-    unit_price: Money
-    line_total:Money
+    unit_price: Rate
+    line_total: Money
 
     @model_validator(mode='after')
     def check_line_total(self) -> Self:
@@ -46,15 +56,7 @@ class InvoiceLineItem(DomainModel):
                 f"line_total {self.line_total} is inconsistent with expected {expected}"
             )
         return self
-
-class CurrencyCode(StrEnum):
-    USD = "USD"
-    EUR = "EUR"
-    GBP = "GBP"
-    CAD = "CAD"
-    AUD = "AUD"
-    JPY = "JPY"
-
+    
 class Invoice(DomainModel):
     invoice_number: NonEmptyStr100
     issue_date: date
@@ -92,4 +94,11 @@ class Invoice(DomainModel):
                 f"grand_total {self.grand_total} is inconsistent "
                 f"with expected grand total {expected_grand}"
             )
+        return self
+    
+    @model_validator(mode='after')
+    def check_line_numbers_unique(self) -> Self:
+        numbers = [li.line_number for li in self.line_items]
+        if len(numbers) != len(set(numbers)):
+            raise ValueError("line_numbers must be unique within an invoice")
         return self
