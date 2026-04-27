@@ -86,37 +86,39 @@ wheels = [
 ]
 
 [[package]]
-name = "invoicescanner"
+name = "invoice-importer"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
-    { name = "alembic" },
     { name = "asyncpg" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "pyright" },
-    { name = "ruff" },
     { name = "sqlalchemy", extra = ["asyncio"] },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "aiosqlite" },
+    { name = "alembic" },
+    { name = "pyright" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "alembic", specifier = ">=1.18.4" },
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "pydantic", specifier = ">=2.13.3" },
     { name = "pydantic-settings", specifier = ">=2.14.0" },
-    { name = "pyright", specifier = ">=1.1.409" },
-    { name = "ruff", specifier = ">=0.15.11" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.49" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "aiosqlite", specifier = ">=0.22.1" }]
+dev = [
+    { name = "aiosqlite", specifier = ">=0.22.1" },
+    { name = "alembic", specifier = ">=1.18.4" },
+    { name = "pyright", specifier = ">=1.1.409" },
+    { name = "ruff", specifier = ">=0.15.11" },
+]
 
 [[package]]
 name = "mako"
