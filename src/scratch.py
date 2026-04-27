@@ -1,6 +1,6 @@
 import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
-from storage.tables import Base
+from invoice_importer.storage.tables import Base
 
 async def main():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
