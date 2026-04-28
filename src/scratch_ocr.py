@@ -11,8 +11,7 @@ def main():
         source_identifier=str(image_path),
     )
 
-    extractor = OcrExtractor()
-    extractor.warmup()
+    extractor = OcrExtractor().warmup()
     result = extractor.extract(source)
 
     print(f"Extracted via {result.extractor}")

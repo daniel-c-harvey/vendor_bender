@@ -32,7 +32,7 @@ class PdfTextExtractor:
             pages_text = self._extract_pages(source.data)
         except Exception as e:
             raise TextExtractionFailedError(
-                f"padfplumber failed to read pdf",
+                f"pdfplumber failed to read pdf",
                 source_identifier=source.source_identifier
             ) from e
         

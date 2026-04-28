@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+from typing import Self
 
 from PIL import Image
 
@@ -27,16 +28,17 @@ class OcrExtractor:
     def __init__(self) -> None:
         self._engine = None
 
-    def warmup(self) -> None:
+    def warmup(self) -> Self:
         """Initializes the OCR engine.  Call during startup."""
 
         if self._engine is not None:
-            return
+            return self
 
         from rapidocr_onnxruntime import RapidOCR
         logger.info("loading OCR model")
         self._engine = RapidOCR()
         logger.info("OCR model ready")
+        return self
 
     def extract(self, source: SourceContent) -> ExtractedText:
         """Extracts text from an image/scan source."""
