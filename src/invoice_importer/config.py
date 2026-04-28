@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # LLM provider
     anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-opus-4-7"
+    anthropic_model: str = "claude-haiku-4-5"
 
     # Logging
     log_level: str = "INFO"
