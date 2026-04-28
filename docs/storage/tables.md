@@ -356,7 +356,7 @@ Two different types for the same concept:
 - **Domain model** (Pydantic): `Invoice`, `LineItem`, `Vendor`. Frozen, validated, immutable, no I/O dependencies. Represents *what an invoice is*.
 - **Storage model** (SQLAlchemy): `InvoiceRow`, `LineItemRow`, `VendorRow`. Mutable instrumented objects tied to DB rows. Represents *how invoice data is stored*.
 
-The repository layer translates between them. Why bother?
+The repository layer translates between them via dedicated adapter functions (see `repository.md`). Why bother?
 
 1. **Domain stays free of ORM concerns.** No SQLAlchemy in your business logic.
 2. **Storage stays free of domain validation.** Loading a row doesn't re-run cross-field invariants.
@@ -364,27 +364,6 @@ The repository layer translates between them. Why bother?
 4. **Different lifecycle requirements.** Domain models are immutable values; storage models are mutable identity-tracked entities.
 
 Naming convention: `*Row` suffix on storage models disambiguates clearly. (Other conventions: `*Entity`, `*Model`, separate namespaces.)
-
-The translation is mechanical and lives in the repository:
-
-```python
-def to_invoice_row(invoice: Invoice) -> InvoiceRow:
-    return InvoiceRow(
-        invoice_number=invoice.invoice_number,
-        issue_date=invoice.issue_date,
-        # ... etc
-        line_items=[
-            LineItemRow(
-                line_number=li.line_number,
-                description=li.description,
-                # ...
-            )
-            for li in invoice.line_items
-        ],
-    )
-```
-
-Don't be tempted to use Pydantic's `model_dump()` and pass it as `**kwargs`. The shapes diverge in real projects (currency as enum vs. string, tuples vs. lists, computed fields, nested vs. relational), and you want the friction to surface those differences explicitly.
 
 ### Domain models don't need bidirectional relationships
 
@@ -425,19 +404,22 @@ Add this to `Base` early — Alembic autogenerate works much better with determi
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase
 
-NAMING_CONVENTION = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
-}
-
 class Base(DeclarativeBase):
-    metadata = MetaData(naming_convention=NAMING_CONVENTION)
+    metadata = MetaData(
+        naming_convention={
+            "ix": "ix_%(column_0_label)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s",
+        },
+        schema="invoice_importer",
+    )
 ```
 
 Without this, PG and SQLite generate different default names and Alembic gets confused reconciling them. Set it before the first migration; changing the convention later requires a coordinated rename effort.
+
+The `schema=` argument places all tables in a named PostgreSQL schema (rather than the default `public`). Useful for namespacing in shared databases — multiple apps can coexist in one DB, each in their own schema. Tests against SQLite generally need to either drop the schema or use a workaround, since SQLite has no schema concept.
 
 ## 14. Design checklist for a storage table
 
@@ -517,6 +499,8 @@ The full file at `src/invoice_importer/storage/tables.py` exemplifies these patt
 
 **`AddressRow` separated from `VendorRow`**, true 1:1 relationship. Could also have been flattened onto the vendor; this layout is more normalized but adds a join. Either is defensible.
 
+**`schema="invoice_importer"`** in the `Base` metadata — all tables live in a named schema. Keeps the database tidy and supports multi-app shared databases.
+
 **`ondelete="RESTRICT"`** on `invoices.vendor_id` — vendors with invoices can't be deleted (historical record preservation).
 
 **`ondelete="CASCADE"`** on `line_items.invoice_id` — line items are owned by their invoice.
@@ -528,6 +512,8 @@ The full file at `src/invoice_importer/storage/tables.py` exemplifies these patt
 **Composite `UniqueConstraint`** on `(vendor_id, invoice_number)` and `(invoice_id, line_number)` — business invariants enforced at the schema level.
 
 **`order_by="InvoiceLineItemRow.line_number"`** — predictable ordering when accessing `invoice.line_items`.
+
+**Currency stored as `String(3)`, not a DB-level enum** — the `CurrencyCode` enum lives in the domain layer. Trade-off: easier to extend without a migration, at the cost of DB-level enforcement. Also means the adapter can pass `invoice.currency` directly (since `StrEnum` instances *are* strings) — no `.value` needed.
 
 **No `updated_at` on invoices** — they're immutable historical records. Add only when fields can change.
 
