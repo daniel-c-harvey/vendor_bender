@@ -2,15 +2,15 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Self
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, WithJsonSchema
 
 NonEmptyStr100 = Annotated[str, Field(min_length=1, max_length=100)]
 NonEmptyStr200 = Annotated[str, Field(min_length=1, max_length=200)]
 NonEmptyStr500 = Annotated[str, Field(min_length=1, max_length=500)]
 CountryCode = Annotated[str, Field(min_length=2, max_length=2, pattern=r"^[A-Z]{2}$")]
-Money = Annotated[Decimal, Field(max_digits=19, decimal_places=2)]
-Rate = Annotated[Decimal, Field(max_digits=19, decimal_places=5)]
-Qty = Annotated[Decimal, Field(max_digits=19, decimal_places=5, gt=0)]
+Money = Annotated[Decimal, Field(max_digits=19, decimal_places=2), WithJsonSchema({"type": "number"})]
+Rate = Annotated[Decimal, Field(max_digits=19, decimal_places=5), WithJsonSchema({"type": "number"})]
+Qty = Annotated[Decimal, Field(max_digits=19, decimal_places=5, gt=0), WithJsonSchema({"type": "number"})]
 
 class CurrencyCode(StrEnum):
     USD = "USD"

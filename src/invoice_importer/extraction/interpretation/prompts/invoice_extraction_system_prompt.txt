@@ -14,6 +14,8 @@ Rules:
   grand_total should equal subtotal + tax_total.
 - Currency: must be the 3-letter ISO 4217 code (USD, EUR, GBP, etc.).
 - Country: must be the 2-letter ISO 3166-1 alpha-2 code (US, GB, DE, etc.).
+- Vendor names and other free-form strings like descriptions should be full and complete,
+  including any prefixes suffixes or decorations.
 - If the invoice contains placeholder vendor names (like "N/A", "Unknown", "TBD"),
   use the most specific real name available in the document instead.
 

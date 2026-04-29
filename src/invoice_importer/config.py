@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # Local LLM
+    llama_model_path: str
+    llama_n_ctx: int = 32768
+    llama_n_gpu_layers: int = -1  # -1 = all layers on GPU
+
 
 @lru_cache
 def get_settings() -> Settings:
