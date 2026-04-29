@@ -2,21 +2,36 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import Self
+from typing import Any, Self
 
 from PIL import Image
+from rapidocr_onnxruntime import RapidOCR
 
+from invoice_importer.extraction.layout import PositionedText, cluster_into_blocks
 from invoice_importer.extraction.types import (
+    BBox,
     ContentType,
     ExtractedText,
     ExtractionError,
+    Page,
     SourceContent,
     TextExtractionFailedError,
 )
 
 logger = logging.getLogger(__name__)
 
+
 class OcrExtractor:
+    """Extracts layout-preserving text from a single-page image via rapidocr.
+
+    rapidocr returns a list of (quad, text, confidence) detections where
+    ``quad`` is four corner points (potentially rotated for skewed text).
+    We axis-align each quad, group fragments into paragraph-shaped
+    TextBlocks via the shared layout pipeline, and emit a single
+    one-page :class:`ExtractedText`. No table detection — that is a much
+    harder problem from raw OCR bboxes than it is from a digital PDF.
+    """
+
     name = "rapidocr"
     supported_content_types = frozenset({
         ContentType.PNG,
@@ -25,23 +40,22 @@ class OcrExtractor:
         ContentType.WEBP,
     })
 
+    _engine: RapidOCR | None
+
     def __init__(self) -> None:
         self._engine = None
 
     def warmup(self) -> Self:
-        """Initializes the OCR engine.  Call during startup."""
-
+        """Initialize the OCR engine. Call during startup."""
         if self._engine is not None:
             return self
 
-        from rapidocr_onnxruntime import RapidOCR
         logger.info("loading OCR model")
         self._engine = RapidOCR()
         logger.info("OCR model ready")
         return self
 
     def extract(self, source: SourceContent) -> ExtractedText:
-        """Extracts text from an image/scan source."""
         if self._engine is None:
             raise RuntimeError(
                 "OCR engine not initialized.  "
@@ -71,37 +85,50 @@ class OcrExtractor:
                 source_identifier=source.source_identifier,
             ) from e
 
-        text = self._assemble_text(result)
-
-        if not text.strip():
+        positioned = _to_positioned(result)
+        if not positioned:
             raise TextExtractionFailedError(
-                "OCR produce no text from source",
+                "OCR produced no text from source",
                 source_identifier=source.source_identifier,
             )
 
+        blocks = cluster_into_blocks(positioned)
+        page = Page(page_number=1, blocks=tuple(blocks))
+
         return ExtractedText(
-            text=text,
-            page_count=1,
+            pages=(page,),
             extractor=self.name,
             is_likely_low_quality=False,
         )
 
-    @staticmethod
-    def _assemble_text(ocr_result: list | None) -> str:
-        """Convert rapidocr's structured output into plain text.
 
-        rapidocr returns a list of [bbox, text, confidence] entries,
-        in roughly reading order. We just concatenate the text fields,
-        joined by newlines so structure is at least line-preserved.
-        """
-        if not ocr_result:
-            return ""
+def _to_positioned(ocr_result: list[Any] | None) -> list[PositionedText]:
+    """Normalize rapidocr's ``[quad, text, confidence]`` entries into
+    :class:`PositionedText`. ``quad`` is converted to an axis-aligned bbox."""
+    if not ocr_result:
+        return []
 
-        lines = []
-        for entry in ocr_result:
-            if len(entry) >= 2:
-                lines.append(str(entry[1]))
+    out: list[PositionedText] = []
+    for entry in ocr_result:
+        if len(entry) < 2:
+            continue
+        quad, text = entry[0], str(entry[1])
+        bbox = _quad_to_aabb(quad)
+        if bbox is None:
+            continue
+        out.append(PositionedText(text=text, bbox=bbox))
+    return out
 
-        return "\n".join(lines)
 
-    
+def _quad_to_aabb(quad: Any) -> BBox | None:
+    """Collapse a 4-corner quadrilateral to its axis-aligned bounding box.
+    Returns None when the quad shape is unrecognized — defensive against
+    rapidocr versions that change their output schema."""
+    try:
+        xs = [float(point[0]) for point in quad]
+        ys = [float(point[1]) for point in quad]
+    except (TypeError, ValueError, IndexError):
+        return None
+    if not xs or not ys:
+        return None
+    return (min(xs), min(ys), max(xs), max(ys))

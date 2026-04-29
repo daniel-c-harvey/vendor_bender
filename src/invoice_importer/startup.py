@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -9,9 +8,9 @@ from invoice_importer.config import get_settings, Settings
 from invoice_importer.extraction.dispatcher import ExtractionDispatcher
 from invoice_importer.extraction.extractors.ocr import OcrExtractor
 from invoice_importer.extraction.extractors.pdf import PdfTextExtractor
-from invoice_importer.extraction.interpretation.anthropic_client import AnthropicInterpreter
-from invoice_importer.extraction.interpretation.base import LLMInterpreter
-from invoice_importer.extraction.interpretation.llama_cpp_client import LlamaCppInterpreter
+from invoice_importer.interpretation.anthropic_client import AnthropicInterpreter
+from invoice_importer.interpretation.base import LLMInterpreter
+from invoice_importer.interpretation.llama_cpp_client import LlamaCppInterpreter
 from invoice_importer.orchestration.importer import InvoiceImporter
 from invoice_importer.storage.db import make_engine, make_session_factory
 

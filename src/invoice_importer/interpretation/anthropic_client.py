@@ -8,14 +8,14 @@ from anthropic.types import ToolParam, ToolChoiceToolParam, MessageParam
 from pydantic import ValidationError
 
 from invoice_importer.domain.models import Invoice
-from invoice_importer.extraction.interpretation.prompts import (
+from invoice_importer.interpretation.prompts import (
     INVOICE_EXTRACTION_SYSTEM_PROMPT,
     build_user_message
 )
 from invoice_importer.extraction.types import (
-    ExtractedText,
-    LLMInterpretationError
+    ExtractedText
 )
+from invoice_importer.interpretation.types import LLMInterpretationError
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +55,14 @@ class AnthropicInterpreter:
             "name": TOOL_NAME,
             "type": "tool",
         }
-        maessage_param: MessageParam = {
+        user_content = build_user_message(text)
+        message_param: MessageParam = {
             "role": "user",
-            "content": build_user_message(text.text)
+            "content": user_content,
         }
         logger.info(
             "interpreting %d chars (extracted via %s) with %s",
-            len(text.text),
+            len(user_content),
             text.extractor,
             self._model,
         )
@@ -73,7 +74,7 @@ class AnthropicInterpreter:
                 system=INVOICE_EXTRACTION_SYSTEM_PROMPT,
                 tools=[tool_definition],
                 tool_choice=tool_choice,
-                messages=[maessage_param]
+                messages=[message_param]
             )
         except anthropic.APIError as e:
             raise LLMInterpretationError(

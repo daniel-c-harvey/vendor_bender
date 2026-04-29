@@ -4,25 +4,25 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Self
+from typing import Self, Iterator
 
-from llama_cpp import Llama, ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage
+from llama_cpp import Llama, ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage, \
+    ChatCompletionResponseMessage, CreateChatCompletionStreamResponse
 from llama_cpp.llama_grammar import LlamaGrammar
 from pydantic import ValidationError
 
 from invoice_importer.domain.models import Invoice
-from invoice_importer.extraction.interpretation.grammar import (
+from invoice_importer.interpretation.grammar import (
     grammar_from_pydantic_schema,
 )
-from invoice_importer.extraction.interpretation.prompts import (
+from invoice_importer.interpretation.prompts import (
     INVOICE_EXTRACTION_SYSTEM_PROMPT,
     build_user_message,
 )
 from invoice_importer.extraction.types import (
-    ExtractedText,
-    LLMInterpretationError,
+    ExtractedText
 )
-
+from invoice_importer.interpretation.types import LLMInterpretationError
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class LlamaCppInterpreter:
             n_ctx=self._n_ctx,
             n_gpu_layers=self._n_gpu_layers,
             seed=self._seed,
-            verbose=False,
+            verbose=True,
         )
 
         logger.info("building grammar from Invoice schema")
@@ -88,14 +88,15 @@ class LlamaCppInterpreter:
                 "LlamaCppInterpreter.warmup() must be called before interpret()"
             )
 
+        user_content = build_user_message(text)
         logger.info(
             "interpreting %d chars (extracted via %s) with %s",
-            len(text.text),
+            len(user_content),
             text.extractor,
             self.name
         )
 
-        raw_output = await asyncio.to_thread(self._generate, text.text)
+        raw_output = await asyncio.to_thread(self._generate, user_content)
 
         try:
             data = json.loads(raw_output)
@@ -118,21 +119,23 @@ class LlamaCppInterpreter:
             ) from e
 
 
-    def _generate(self, document_text: str) -> str:
+    def _generate(self, user_content: str) -> str:
         """Synchronous inference call.  To be run on a worker thread via asyncio."""
         assert self._llm is not None and self._grammar is not None
         system_message: ChatCompletionRequestSystemMessage = {"role": "system", "content": INVOICE_EXTRACTION_SYSTEM_PROMPT}
-        user_message: ChatCompletionRequestUserMessage = {"role": "user", "content": build_user_message(document_text)}
+        user_message: ChatCompletionRequestUserMessage = {"role": "user", "content": user_content}
 
-        response = self._llm.create_chat_completion(
-            messages=[
-                system_message,
-                user_message,
-            ],
-            grammar=self._grammar,
-            max_tokens=2048,
-            temperature=0.0
-        )
+        response = (
+            self._llm.create_chat_completion(
+                messages=[
+                    system_message,
+                    user_message,
+                ],
+                grammar=self._grammar,
+                max_tokens=2048,
+                temperature=0.0,
+                stream=True
+        ))
 
         choices = response["choices"]
         if not choices:

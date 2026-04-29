@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from invoice_importer.domain.models import Invoice
 from invoice_importer.extraction.dispatcher import ExtractionDispatcher
-from invoice_importer.extraction.interpretation.base import LLMInterpreter
+from invoice_importer.interpretation.base import LLMInterpreter
 from invoice_importer.extraction.types import SourceContent, ExtractedText
 from invoice_importer.storage import repository
 from invoice_importer.storage.db import transactional_session
@@ -60,8 +60,9 @@ class InvoiceImporter:
         extracted: ExtractedText = await asyncio.to_thread(self._dispatcher.extract, source)
 
         logger.info(
-            "extracted %d chars from %s via %s",
-            len(extracted.text),
+            "extracted %d blocks across %d pages from %s via %s",
+            sum(len(page.blocks) for page in extracted.pages),
+            len(extracted.pages),
             source.source_identifier,
             extracted.extractor,
         )

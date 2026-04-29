@@ -18,6 +18,5 @@ class LLMInterpreter(Protocol):
 
         Raises LLMInterpretationError on failure.
         """
-
-        
+        ...
 
