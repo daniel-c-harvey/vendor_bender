@@ -4,7 +4,7 @@ from invoice_importer.extraction.types import ContentType, SourceContent
 
 
 def main():
-    pdf_path = Path("test.pdf")
+    pdf_path = Path("Hollow Creek Welding-2.pdf")
     source = SourceContent(
         data=pdf_path.read_bytes(),
         content_type=ContentType.PDF,

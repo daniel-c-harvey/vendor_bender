@@ -4,7 +4,7 @@ from invoice_importer.extraction.types import ContentType, SourceContent
 
 
 def main():
-    image_path = Path("test-invoice.webp")  # any image with text
+    image_path = Path("Hollow Creek Welding-2.png")  # any image with text
     source = SourceContent(
         data=image_path.read_bytes(),
         content_type=ContentType.PNG,
