@@ -23,6 +23,11 @@ See [`../../../CLAUDE.md`](../../../CLAUDE.md) for project-wide rules.
 - `prompts/invoice_extraction_system_prompt.txt` — the system prompt.
   Edit-as-text; not tracked separately as code.
 - `types.py` — `LLMInterpretationError`.
+- `__init__.py` — re-exports the contracts (`LLMInterpreter` Protocol,
+  `LLMInterpretationError`). `AnthropicInterpreter` and `LlamaCppInterpreter`
+  are *deliberately omitted* — re-exporting them would force anthropic /
+  llama_cpp to load on any import from this layer. Reach them at
+  `interpretation.anthropic_client` / `.llama_cpp_client` instead.
 
 ## Invariants
 
@@ -50,19 +55,10 @@ New interpreter: implement the `LLMInterpreter` Protocol, branch on a
 backends see the same prompt surface.
 
 If you need a different system prompt per backend, add another `.txt`
-under `prompts/` and load it via `_load_prompt` — but fix the bytes-repr
-bug first (see Gotchas).
+under `prompts/` and load it via `_load_prompt`.
 
 ## Gotchas
 
-- **`prompts._load_prompt` ships the bytes-repr to the LLM.** Opens with
-  `FileIO` (binary) and calls `str(file.read())`, so the system prompt
-  arrives as `"b'You are an...\\n'"` rather than the decoded text.
-  Tracked in `TODO.md`. Do not drive-by fix; the user knows.
-- **`LLMInterpretationError` inherits from `ExtractionError`** (in
-  `extraction/types.py`). Categorically wrong — an LLM failure is not an
-  extraction failure, and a caller catching `ExtractionError` will swallow
-  interpretation failures. Tracked in `TODO.md`.
 - **The llama-cpp call is `stream=True` but the code reads
   `response["choices"]` as if it were a non-streamed dict.** It works
   because llama-cpp-python accumulates and returns a final dict in

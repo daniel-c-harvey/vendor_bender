@@ -116,6 +116,15 @@ respective submodule `CLAUDE.md` — read those before touching the layer.
 - Transport types in `extraction/` are `@dataclass(frozen=True, slots=True)`;
   domain types are Pydantic `BaseModel`. Don't mix.
 - Imports are absolute (`from invoice_importer.x.y import Z`), not relative.
+- **Every layer is a regular package with a curated `__init__.py`** that
+  re-exports its public surface — types, errors, Protocols, and lightweight
+  classes (e.g. `ExtractionDispatcher`, `InvoiceImporter`). Heavy concrete
+  implementations whose import pulls in large optional dependencies
+  (`PdfTextExtractor` → pdfplumber, `OcrExtractor` → rapidocr,
+  `AnthropicInterpreter` → anthropic, `LlamaCppInterpreter` → llama_cpp) are
+  *deliberately* not re-exported and stay reachable at their deep paths.
+  Internal helpers (`layout`, `prompts`, `grammar`, `tables`, `adapters`) are
+  not re-exported either. New layer code follows this split.
 
 ## Database & migrations
 
@@ -136,11 +145,9 @@ respective submodule `CLAUDE.md` — read those before touching the layer.
 
 ## Known issues — do NOT auto-fix
 
-See `TODO.md` at the repo root. It lists the prompt loader bytes-repr bug, the
-unreachable `UnsupportedContentTypeError`, an error-class inheritance smell, a
-typo, and repo hygiene items. These are tracked deliberately. Do **not** silently
-fix them as drive-by cleanup in unrelated work — surface them, leave them, and
-let the user decide when to address them.
+See `TODO.md` at the repo root. When items are tracked there, they are tracked
+deliberately. Do **not** silently fix them as drive-by cleanup in unrelated
+work — surface them, leave them, and let the user decide when to address them.
 
 ## `docs/` is reference, not project docs
 
