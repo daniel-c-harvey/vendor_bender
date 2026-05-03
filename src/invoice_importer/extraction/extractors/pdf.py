@@ -12,7 +12,7 @@ from invoice_importer.extraction.types import (
     BBox,
     Block,
     ContentType,
-    ExtractedText,
+    ExtractedDocument,
     ExtractionError,
     Page,
     SourceContent,
@@ -40,7 +40,7 @@ class PdfTextExtractor:
     name = "pdfplumber"
     supported_content_types = frozenset({ContentType.PDF})
 
-    def extract(self, source: SourceContent) -> ExtractedText:
+    def extract(self, source: SourceContent) -> ExtractedDocument:
         if source.content_type != ContentType.PDF:
             raise ExtractionError(
                 f"PdfTextExtractor cannot handle {source.content_type}",
@@ -71,7 +71,7 @@ class PdfTextExtractor:
                 largest_page_chars,
             )
 
-        return ExtractedText(
+        return ExtractedDocument(
             pages=tuple(pages),
             extractor=self.name,
             is_likely_low_quality=is_likely_low_quality,

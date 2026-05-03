@@ -8,6 +8,7 @@ from invoice_importer.config import get_settings, Settings
 from invoice_importer.extraction.dispatcher import ExtractionDispatcher
 from invoice_importer.extraction.extractors.ocr import OcrExtractor
 from invoice_importer.extraction.extractors.pdf import PdfTextExtractor
+from invoice_importer.extraction.normalizer import TextNormalizer
 from invoice_importer.interpretation.anthropic_client import AnthropicInterpreter
 from invoice_importer.interpretation.base import LLMInterpreter
 from invoice_importer.interpretation.llama_cpp_client import LlamaCppInterpreter
@@ -58,6 +59,7 @@ def build_importer() -> InvoiceImporter:
 
     return InvoiceImporter(
         dispatcher=build_extraction(),
+        normalizer=TextNormalizer(),
         interpreter=build_interpreter(settings),
         session_factory=build_session_factory(settings),
     )

@@ -30,7 +30,7 @@ SourceContent (bytes + content_type + identifier)
 └─────────────────────────────────────────┘
     │
     ▼
-ExtractedText (text + page_count + extractor name)
+ExtractedText (pages + extractor name + low-quality flag)
     │
     ▼
 ┌─────────────────────────────────────────┐
@@ -219,14 +219,18 @@ Key files and what they contain (for quick navigation):
 | `src/invoice_importer/storage/db.py` | make_engine, make_session_factory, transactional_session |
 | `src/invoice_importer/storage/adapters.py` | Public to_*_row / from_*_row functions |
 | `src/invoice_importer/storage/repository.py` | save_invoice, get_invoice_by_id, etc. |
-| `src/invoice_importer/extraction/types.py` | SourceContent, ExtractedText, ContentType enum, ExtractionError hierarchy |
+| `src/invoice_importer/extraction/types.py` | SourceContent, ExtractedText, Page, TextBlock, TableBlock, ContentType enum, ExtractionError hierarchy |
 | `src/invoice_importer/extraction/dispatcher.py` | ExtractionDispatcher with content-type routing |
+| `src/invoice_importer/extraction/layout.py` | PositionedText, cluster_into_blocks — shared layout reconstruction used by both pdf and ocr extractors |
+| `src/invoice_importer/extraction/extractors/base.py` | TextExtractor Protocol |
 | `src/invoice_importer/extraction/extractors/pdf.py` | PdfTextExtractor (pdfplumber) |
 | `src/invoice_importer/extraction/extractors/ocr.py` | OcrExtractor (rapidocr, explicit warmup) |
-| `src/invoice_importer/extraction/interpretation/prompts.py` | System prompt + build_user_message |
-| `src/invoice_importer/extraction/interpretation/grammar.py` | grammar_from_pydantic_schema |
-| `src/invoice_importer/extraction/interpretation/anthropic_client.py` | AnthropicInterpreter (tool use) |
-| `src/invoice_importer/extraction/interpretation/llama_cpp_client.py` | LlamaCppInterpreter (grammar-constrained) |
+| `src/invoice_importer/interpretation/base.py` | LLMInterpreter Protocol |
+| `src/invoice_importer/interpretation/types.py` | LLMInterpretationError (extends ExtractionError) |
+| `src/invoice_importer/interpretation/prompts.py` | System prompt + build_user_message |
+| `src/invoice_importer/interpretation/grammar.py` | grammar_from_pydantic_schema |
+| `src/invoice_importer/interpretation/anthropic_client.py` | AnthropicInterpreter (tool use) |
+| `src/invoice_importer/interpretation/llama_cpp_client.py` | LlamaCppInterpreter (grammar-constrained) |
 | `src/invoice_importer/orchestration/importer.py` | InvoiceImporter |
 | `src/invoice_importer/startup.py` | Composition root: `build_extraction()`, `build_interpreter()`, `build_session_factory()`, `build_importer()` |
 | `migrations/env.py` | Alembic env, imports Base from tables, sets target_metadata |

@@ -1,9 +1,11 @@
 from invoice_importer.extraction.dispatcher import ExtractionDispatcher
 from invoice_importer.extraction.extractors.base import TextExtractor
+from invoice_importer.extraction.normalizer import TextNormalizer
 from invoice_importer.extraction.types import (
     BBox,
     Block,
     ContentType,
+    ExtractedDocument,
     ExtractedText,
     ExtractionError,
     Page,
@@ -22,6 +24,7 @@ __all__ = [
     "BBox",
     "Block",
     "ContentType",
+    "ExtractedDocument",
     "ExtractedText",
     "ExtractionDispatcher",
     "ExtractionError",
@@ -31,5 +34,6 @@ __all__ = [
     "TextBlock",
     "TextExtractionFailedError",
     "TextExtractor",
+    "TextNormalizer",
     "UnsupportedContentTypeError",
 ]

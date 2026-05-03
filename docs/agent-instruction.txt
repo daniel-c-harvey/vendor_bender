@@ -1,0 +1,141 @@
+  Usage guide — agent-worktree scripts
+
+  What they do
+
+  Two pairs of scripts (bash + PowerShell) that automate the lifecycle of a throwaway git worktree
+  dedicated to a single agentic task: spin one up, let an agent work in isolation, then merge it back
+  and tear it down.
+
+  Files
+
+  ┌──────────────────────────────────┬─────────────────────────────────┐
+  │               Path               │             Purpose             │
+  ├──────────────────────────────────┼─────────────────────────────────┤
+  │ ~/bin/agent-worktree             │ bash: create + launch claude    │
+  ├──────────────────────────────────┼─────────────────────────────────┤
+  │ ~/bin/agent-worktree-cleanup     │ bash: merge + optional teardown │
+  ├──────────────────────────────────┼─────────────────────────────────┤
+  │ ~/bin/agent-worktree.ps1         │ PowerShell sibling of create    │
+  ├──────────────────────────────────┼─────────────────────────────────┤
+  │ ~/bin/agent-worktree-cleanup.ps1 │ PowerShell sibling of cleanup   │
+  └──────────────────────────────────┴─────────────────────────────────┘
+
+  ~/bin is on PATH for both shells (Git Bash always; PowerShell via the line just added to your $PROFILE
+   — C:\Users\dharvey\OneDrive\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1).
+
+  Layout it produces
+
+  For a project at C:/Development/Python Exercises/InvoiceScanner, an agent worktree with keyword
+  fix-import-bug lands at:
+
+  C:/Development/Python Exercises/
+  ├── InvoiceScanner/                          ← main worktree (untouched)
+  └── InvoiceScanner-agents/                   ← created on demand
+      └── fix-import-bug/                      ← linked worktree, branch agent/fix-import-bug
+
+  Every agent worktree for a given project is grouped under one sibling directory.
+
+  ---
+  Create — agent-worktree
+
+  # bash (Git Bash)
+  agent-worktree                       # prompts for keyword
+  agent-worktree fix-import-bug        # keyword as arg
+
+  # PowerShell
+  agent-worktree.ps1                   # prompts
+  agent-worktree.ps1 fix-import-bug
+
+  What happens:
+  1. Resolves the main worktree root (works even if you're invoking from inside a linked worktree).
+  2. Sanitizes the keyword: lowercase, spaces/underscores → -, anything outside [a-z0-9-] stripped,
+  repeated/leading/trailing dashes collapsed. So Fix Import Bug! → fix-import-bug.
+  3. Refuses if the worktree path or agent/<keyword> branch already exists.
+  4. git worktree add -b agent/<keyword> <path> off your current HEAD.
+  5. cds into the new worktree and exec claude — when Claude exits, your original shell is back where it
+   was.
+
+  Branch naming: always agent/<sanitized-keyword>, off whatever HEAD you were on when you ran the
+  script.
+
+  ---
+  Cleanup — agent-worktree-cleanup
+
+  # bash
+  agent-worktree-cleanup                                   # infer keyword from cwd, merge --no-ff into
+  main
+  agent-worktree-cleanup fix-import-bug
+  agent-worktree-cleanup fix-import-bug --into develop --squash --yes
+  agent-worktree-cleanup fix-import-bug --keep            # merge but leave worktree/branch alone
+
+  # PowerShell
+  agent-worktree-cleanup.ps1
+  agent-worktree-cleanup.ps1 fix-import-bug
+  agent-worktree-cleanup.ps1 fix-import-bug -Into develop -Squash -Yes
+  agent-worktree-cleanup.ps1 fix-import-bug -Keep
+
+  Options:
+
+  ┌─────────────────┬────────────────┬───────────────────────────────────────────────────────┐
+  │      bash       │   PowerShell   │                        Effect                         │
+  ├─────────────────┼────────────────┼───────────────────────────────────────────────────────┤
+  │ --into <branch> │ -Into <branch> │ Merge target. Default: main                           │
+  ├─────────────────┼────────────────┼───────────────────────────────────────────────────────┤
+  │ --squash        │ -Squash        │ git merge --squash + commit, instead of --no-ff       │
+  ├─────────────────┼────────────────┼───────────────────────────────────────────────────────┤
+  │ --keep          │ -Keep          │ Don't remove worktree/branch after a successful merge │
+  ├─────────────────┼────────────────┼───────────────────────────────────────────────────────┤
+  │ -y, --yes       │ -Yes           │ Skip the "remove?" confirmation                       │
+  └─────────────────┴────────────────┴───────────────────────────────────────────────────────┘
+
+  Keyword inference: if you omit the keyword and your cwd is anywhere under
+  <project>-agents/<keyword>/..., it infers from the path. So you can just cd into the agent worktree
+  and run cleanup with no arguments.
+
+  What it does, step by step:
+  1. Resolves main worktree root and target paths.
+  2. Refuses if EITHER worktree is dirty — agent or main. Prints git status --short and tells you to
+  commit or stash. No silent auto-commit, no auto-stash.
+  3. Checks the agent branch has commits ahead of the target. If zero, tells you so and offers to remove
+   the empty worktree+branch.
+  4. Switches the main worktree to the target branch if it's not already there. (Your starting branch on
+   main is not restored — leaving you on the merged-into branch is the expected end state.)
+  5. Merges:
+    - default → git merge --no-ff -m "Merge agent worktree: <keyword>" agent/<keyword>
+    - --squash → git merge --squash + git commit -m "Merge agent worktree: <keyword>"
+  6. Conflicts: stops with a clear pointer to the main worktree path; doesn't auto-clean up. Resolve
+  manually, finish the merge, then re-run with --keep (or just delete the worktree by hand).
+  7. On success, prompts to remove the worktree and delete the branch (use -y / -Yes to skip).
+  Squash-merged branches are deleted with -D since git considers them unmerged from a topology
+  standpoint.
+  8. If your shell's cwd was inside the worktree being deleted, prints a "cd elsewhere" warning.
+
+  ---
+  Common workflows
+
+  Spin up an agent task off main, work, merge back:
+  cd /c/Development/Python\ Exercises/InvoiceScanner   # on main
+  agent-worktree fix-prompt-loader
+  # ... agent does its thing in the new worktree, commits ...
+  # back in your original shell:
+  agent-worktree-cleanup fix-prompt-loader
+  # answer 'y' to remove worktree + branch
+
+  Spin up off a feature branch (not main):
+  cd /c/Development/Python\ Exercises/InvoiceScanner
+  git checkout feature/new-extractor
+  agent-worktree refine-ocr
+  # work happens off feature/new-extractor; merge back into it:
+  agent-worktree-cleanup refine-ocr --into feature/new-extractor
+
+  Run cleanup from inside the agent worktree:
+  cd /c/Development/Python\ Exercises/InvoiceScanner-agents/fix-prompt-loader
+  git add -A && git commit -m "..."
+  agent-worktree-cleanup            # keyword inferred, then warns about cwd
+  cd ../../InvoiceScanner           # cwd was dangling — back to main
+
+  Throw away an experiment without merging:
+  # Cleanup script always merges — for "abandon", do it by hand:
+  git -C /c/Development/Python\ Exercises/InvoiceScanner worktree remove
+  ../InvoiceScanner-agents/<keyword>
+  git -C /c/Development/Python\ Exercises/InvoiceScanner branch -D agent/<keyword>

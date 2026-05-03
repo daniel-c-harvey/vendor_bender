@@ -14,22 +14,27 @@ Frame explanations with that lens when relevant — analogues to .NET / Node too
 land better than abstract Python lore. The `docs/` directory holds personal study
 notes, not project documentation (see § "docs/ is reference, not project docs").
 
-## Walkthrough mode — READ FIRST
+## Keeping these docs current — READ FIRST
 
-The user types code himself. This rule overrides any instinct to "just do it":
+The per-layer `CLAUDE.md` files are the authoritative onboarding for future
+sessions. They drift the moment code changes and the docs don't. **After any
+change that touches the layer's public surface, you must update its
+`CLAUDE.md` in the same change set.** "Public surface" means anything a
+reader of the doc would now find wrong:
 
-- **Do NOT use `Edit` or `Write` on `.py` files** under `src/`, `migrations/`, or
-  scratch scripts. Propose the change as a numbered set of steps with the exact
-  code to type, and let the user execute.
-- **Do NOT run install / build / dependency commands** (`uv sync`, `uv add`,
-  `uv lock`, `pip ...`, `alembic upgrade head` against a real DB). Read-only
-  commands (`uv run pytest --collect-only`, `uv run alembic upgrade head --sql`,
-  `uv run python -c "..."`) are fine when needed for verification.
-- `CLAUDE.md`, `TODO.md`, and `docs/**/*.md` may be edited directly when asked.
+- New / renamed / removed re-exports → fix the `__init__.py` paragraph.
+- Changed type names or shapes (e.g. `ExtractedText` ↔ `ExtractedDocument`)
+  → fix the *What's here* bullet and any references elsewhere in the doc.
+- New `.warmup()` requirement, new exception, new commit/rollback rule, new
+  Protocol method → fix *Invariants*.
+- Surprising behaviour you discovered the hard way → add a *Gotcha*.
+- New layer, new strategy point, new extension seam → fix
+  *Extension points* (and add a one-liner reference at the root level).
 
-The corresponding home-directory memory is at
-`~/.claude/projects/.../memory/feedback_walkthrough_mode.md`. This section duplicates
-that on purpose — memory does not travel with the repo.
+If a code change crosses layers, update each layer's doc. If the change
+invalidates a sentence in this root file (pipeline shape, layer
+responsibilities, invariants), update this file too. Doc updates ride with
+the code change — don't leave them for "later".
 
 ## Toolchain & commands
 
@@ -68,16 +73,24 @@ current working directory. They are not generic CLIs.
 
 ## Architecture in one breath
 
-Pipeline: `SourceContent` → `ExtractionDispatcher` → `LLMInterpreter` →
+Pipeline: `SourceContent` → `ExtractionDispatcher.extract` →
+`ExtractedDocument` → `LLMInterpreter.interpret` → `Invoice` →
 `repository.save_invoice` → reload via `get_invoice_by_id`.
+
+`ExtractedDocument` is layout-preserving (pages of `TextBlock` /
+`TableBlock`). `extraction/normalizer.py:TextNormalizer` flattens it into
+the printable `ExtractedText` that the interpreter's prompt builder
+consumes. The two types are distinct on purpose — extractors emit
+structure; the prompt builder wants a string.
 
 Layers (each non-trivial submodule has its own `CLAUDE.md` with the
 layer-specific invariants — read those before touching that layer):
 
 - `domain/` — Pydantic models + error types. Zero I/O.
   See `src/invoice_importer/domain/CLAUDE.md`.
-- `extraction/` — `TextExtractor` Protocol, `ExtractionDispatcher`, layout clustering.
-  Sync, CPU-bound. See `src/invoice_importer/extraction/CLAUDE.md`.
+- `extraction/` — `TextExtractor` Protocol, `ExtractionDispatcher`, layout
+  clustering, and `TextNormalizer` (document → printable text). Sync,
+  CPU-bound. See `src/invoice_importer/extraction/CLAUDE.md`.
 - `interpretation/` — `LLMInterpreter` Protocol, Anthropic + llama-cpp clients,
   schema-derived grammar. See `src/invoice_importer/interpretation/CLAUDE.md`.
 - `storage/` — async SQLAlchemy 2.0 tables, repository functions, session helpers.

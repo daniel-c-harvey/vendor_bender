@@ -13,16 +13,24 @@ invariants.
 
 - `importer.py` — `InvoiceImporter` with one async method,
   `import_invoice(source) -> Invoice`. Constructed once at startup with a
-  dispatcher, an interpreter, and a session factory; reused per request.
+  dispatcher, a `TextNormalizer`, an interpreter, and a session factory;
+  reused per request. A private `_extract_and_normalize(source)` helper
+  pairs the two sync extraction stages so the public method crosses the
+  async-sync seam exactly once.
 - `__init__.py` — re-exports `InvoiceImporter`. The class is the only
   public name in this layer.
 
 ## Order of operations
 
-1. **Extract** — `await asyncio.to_thread(self._dispatcher.extract, source)`.
-   Extraction is sync (CPU-bound); the `to_thread` wrap is the *only*
-   place async meets sync in the pipeline. Extractors must not await
-   inside; this layer must not call them directly.
+1. **Extract + normalize** —
+   `await asyncio.to_thread(self._extract_and_normalize, source)`. The
+   helper runs `dispatcher.extract` (rich `ExtractedDocument`) followed by
+   `normalizer.normalize` (flat `ExtractedText`) on the worker thread, and
+   logs the document's block/page detail before discarding it; only the
+   `ExtractedText` escapes. Both substages are sync (CPU-bound); the
+   `to_thread` wrap is the *only* place async meets sync in the pipeline.
+   Extractors and the normalizer must not await inside; this layer must
+   not call them directly from the async path.
 2. **Interpret** — `await self._interpreter.interpret(extracted)`. Async
    natively (the llama-cpp backend has its own internal `to_thread`).
 3. **Persist + reload** — one `transactional_session`:

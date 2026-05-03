@@ -12,8 +12,8 @@ def _load_prompt(prompt_name: str) -> str:
 INVOICE_EXTRACTION_SYSTEM_PROMPT = _load_prompt("invoice_extraction_system_prompt.txt")
 
 def build_user_message(extracted: ExtractedText) -> str:
-    """Wrap the rendered extraction output into the user message for the LLM."""
+    """Wrap the normalized extraction text into the user message for the LLM."""
     return (
-        f"<invoice_document>{extracted.to_prompt()}</invoice_document>"
+        f"<invoice_document>{extracted.text}</invoice_document>"
         "Extract the structured invoice data using the record_invoice tool."
     )

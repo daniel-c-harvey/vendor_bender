@@ -1,5 +1,11 @@
 from invoice_importer.domain.models import Invoice
-from invoice_importer.extraction.types import ContentType, ExtractedDocument, SourceContent, Page
+from invoice_importer.extraction.types import (
+    ContentType,
+    ExtractedDocument,
+    ExtractedText,
+    Page,
+    SourceContent,
+)
 
 
 class FakeExtractor:
@@ -30,5 +36,5 @@ class FakeInterpreter:
         self.name = name
         self._invoice = invoice
 
-    async def interpret(self, text: ExtractedDocument) -> Invoice:
+    async def interpret(self, text: ExtractedText) -> Invoice:
         return self._invoice

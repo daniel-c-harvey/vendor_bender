@@ -1,13 +1,22 @@
 # interpretation/
 
-`ExtractedText` → validated `Invoice`, via an LLM. Async at the interface;
-the local backend hides a sync inference call behind `asyncio.to_thread`.
+`ExtractedText` → validated `Invoice`, via an LLM. Async at the
+interface; the local backend hides a sync inference call behind
+`asyncio.to_thread`. Flattening from `ExtractedDocument` happens upstream
+in the orchestrator's `_extract_and_normalize` helper, so this layer
+never sees the rich document type.
 
 See [`../../../CLAUDE.md`](../../../CLAUDE.md) for project-wide rules.
 
 ## What's here
 
-- `base.py` — `LLMInterpreter` Protocol (`name`, async `interpret`).
+- `base.py` — `LLMInterpreter` Protocol (`name`, async
+  `interpret(text: ExtractedText) -> Invoice`). The Protocol takes the
+  pre-normalized `ExtractedText`; the orchestrator runs the
+  `TextNormalizer` upstream, so backends never see the raw
+  `ExtractedDocument`. This keeps backends thin (no normalizer
+  dependency, no rendering choices) — the trade-off is that all backends
+  share one prompt-side rendering of the document.
 - `anthropic_client.py` — `AnthropicInterpreter`. Forces a single
   `tool_use` call to a `record_invoice` tool whose `input_schema` is
   `Invoice.model_json_schema()`. The tool's `input` dict goes straight to
@@ -18,8 +27,8 @@ See [`../../../CLAUDE.md`](../../../CLAUDE.md) for project-wide rules.
 - `grammar.py` — one function: `grammar_from_pydantic_schema` →
   `LlamaGrammar.from_json_schema`. The schema-to-grammar bridge.
 - `prompts.py` — loads `prompts/invoice_extraction_system_prompt.txt` and
-  builds the user message (`<invoice_document>...</invoice_document>` +
-  tool instruction).
+  builds the user message via `build_user_message(extracted: ExtractedText)`
+  (`<invoice_document>...</invoice_document>` + tool instruction).
 - `prompts/invoice_extraction_system_prompt.txt` — the system prompt.
   Edit-as-text; not tracked separately as code.
 - `types.py` — `LLMInterpretationError`.
@@ -59,13 +68,12 @@ under `prompts/` and load it via `_load_prompt`.
 
 ## Gotchas
 
-- **The llama-cpp call is `stream=True` but the code reads
-  `response["choices"]` as if it were a non-streamed dict.** It works
-  because llama-cpp-python accumulates and returns a final dict in
-  practice, but the `Iterator`/`CreateChatCompletionStreamResponse` import
-  hints suggest the original intent was different. If you change
-  generation parameters, verify the response shape rather than trusting
-  the type hint.
+- **The llama-cpp call now uses `stream=False`** and reads
+  `response["choices"]` as a dict, with an explicit `assert isinstance(response, dict)`
+  to reassure pyright. The `Iterator`/`CreateChatCompletionStreamResponse`
+  imports are leftover from an earlier streaming attempt; they aren't
+  used by `_generate`. If you change generation parameters, verify the
+  response shape rather than trusting the type hint.
 - **Anthropic API errors are caught broadly as `anthropic.APIError`.**
   Auth, rate-limit, and overload all collapse into one
   `LLMInterpretationError`. Distinguish at the call site if you need to.

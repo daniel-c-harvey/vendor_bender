@@ -11,7 +11,7 @@ from invoice_importer.extraction.layout import PositionedText, cluster_into_bloc
 from invoice_importer.extraction.types import (
     BBox,
     ContentType,
-    ExtractedText,
+    ExtractedDocument,
     ExtractionError,
     Page,
     SourceContent,
@@ -28,7 +28,7 @@ class OcrExtractor:
     ``quad`` is four corner points (potentially rotated for skewed text).
     We axis-align each quad, group fragments into paragraph-shaped
     TextBlocks via the shared layout pipeline, and emit a single
-    one-page :class:`ExtractedText`. No table detection — that is a much
+    one-page :class:`ExtractedDocument`. No table detection — that is a much
     harder problem from raw OCR bboxes than it is from a digital PDF.
     """
 
@@ -55,7 +55,7 @@ class OcrExtractor:
         logger.info("OCR model ready")
         return self
 
-    def extract(self, source: SourceContent) -> ExtractedText:
+    def extract(self, source: SourceContent) -> ExtractedDocument:
         if self._engine is None:
             raise RuntimeError(
                 "OCR engine not initialized.  "
@@ -78,7 +78,7 @@ class OcrExtractor:
             ) from e
 
         try:
-            result, _elapsed = self._engine(image)
+            result, _elapsed = self._engine(source.data)
         except Exception as e:
             raise TextExtractionFailedError(
                 f"OCR engine failed: {e}",
@@ -95,7 +95,7 @@ class OcrExtractor:
         blocks = cluster_into_blocks(positioned)
         page = Page(page_number=1, blocks=tuple(blocks))
 
-        return ExtractedText(
+        return ExtractedDocument(
             pages=(page,),
             extractor=self.name,
             is_likely_low_quality=False,

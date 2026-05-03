@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import assert_never
 
 
 class ContentType(StrEnum):
@@ -55,63 +54,26 @@ class Page:
 
 
 @dataclass(frozen=True, slots=True)
-class ExtractedText:
-    """Layout-preserving extraction output. Consumers render text for LLM
-    consumption via :meth:`to_prompt`."""
+class ExtractedDocument:
+    """Layout-preserving extraction output. Pages contain blocks in reading
+    order. Rendering to a flat string for LLM consumption is the
+    :class:`TextNormalizer`'s responsibility, not this type's.
+    """
+
     pages: tuple[Page, ...]
     extractor: str
     is_likely_low_quality: bool = False
 
-    def to_prompt(self) -> str:
-        """Render the document as text for an LLM.
 
-        TextBlocks pass through; TableBlocks become GitHub-flavored Markdown
-        tables. Blocks within a page are separated by blank lines. Pages are
-        separated by a ``--- Page N ---`` rule only when there is more than
-        one page (single-page invoices stay clean).
-        """
-        rendered_pages = [
-            "\n\n".join(_render_block(block) for block in page.blocks)
-            for page in self.pages
-        ]
-        if len(rendered_pages) <= 1:
-            return rendered_pages[0] if rendered_pages else ""
-        return "\n\n".join(
-            f"--- Page {page.page_number} ---\n\n{rendered}"
-            for page, rendered in zip(self.pages, rendered_pages, strict=True)
-        )
-
-
-def _render_block(block: Block) -> str:
-    match block:
-        case TextBlock(text=text):
-            return text
-        case TableBlock(rows=rows):
-            return _render_table_gfm(rows)
-        case _:
-            assert_never(block)
-
-
-def _render_table_gfm(rows: tuple[tuple[str, ...], ...]) -> str:
-    """Render rows as a GFM table. ``|`` is escaped; embedded newlines
-    become spaces (GFM cells can't span lines). Short rows are padded to
-    the widest row's column count."""
-    if not rows:
-        return ""
-
-    width = max(len(row) for row in rows)
-
-    def cell(value: str) -> str:
-        return value.replace("|", "\\|").replace("\n", " ")
-
-    def render_row(row: tuple[str, ...]) -> str:
-        padded = list(row) + [""] * (width - len(row))
-        return "| " + " | ".join(cell(c) for c in padded) + " |"
-
-    header = render_row(rows[0])
-    separator = "| " + " | ".join("---" for _ in range(width)) + " |"
-    body = [render_row(row) for row in rows[1:]]
-    return "\n".join([header, separator, *body])
+@dataclass(frozen=True, slots=True)
+class ExtractedText:
+    """Normalized text passed to the interpreter. Produced by
+    :class:`TextNormalizer` from an :class:`ExtractedDocument`. Carries the
+    extractor's provenance so downstream consumers don't need to hold the
+    document."""
+    text: str
+    extractor: str
+    is_likely_low_quality: bool
 
 
 class ExtractionError(Exception):

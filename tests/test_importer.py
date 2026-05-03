@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from invoice_importer.domain.errors import DuplicateContentError
 from invoice_importer.domain.models import Invoice
 from invoice_importer.extraction.dispatcher import ExtractionDispatcher
+from invoice_importer.extraction.normalizer import TextNormalizer
 from invoice_importer.extraction.types import (
     ContentType,
     SourceContent,
@@ -29,6 +30,7 @@ def _build_importer(
                 supported_content_types=frozenset({ContentType.PDF}),
             ),
         ]),
+        normalizer=TextNormalizer(),
         interpreter=FakeInterpreter(
             name="fake-llm",
             invoice=invoice,

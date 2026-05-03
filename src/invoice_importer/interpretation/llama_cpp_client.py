@@ -19,9 +19,7 @@ from invoice_importer.interpretation.prompts import (
     INVOICE_EXTRACTION_SYSTEM_PROMPT,
     build_user_message,
 )
-from invoice_importer.extraction.types import (
-    ExtractedText
-)
+from invoice_importer.extraction.types import ExtractedText
 from invoice_importer.interpretation.types import LLMInterpretationError
 
 logger = logging.getLogger(__name__)
@@ -125,17 +123,17 @@ class LlamaCppInterpreter:
         system_message: ChatCompletionRequestSystemMessage = {"role": "system", "content": INVOICE_EXTRACTION_SYSTEM_PROMPT}
         user_message: ChatCompletionRequestUserMessage = {"role": "user", "content": user_content}
 
-        response = (
-            self._llm.create_chat_completion(
-                messages=[
-                    system_message,
-                    user_message,
-                ],
-                grammar=self._grammar,
-                max_tokens=2048,
-                temperature=0.0,
-                stream=True
-        ))
+        response = self._llm.create_chat_completion(
+            messages=[
+                system_message,
+                user_message,
+            ],
+            grammar=self._grammar,
+            max_tokens=2048,
+            temperature=0.0,
+            stream=False
+        )
+        assert isinstance(response, dict)
 
         choices = response["choices"]
         if not choices:

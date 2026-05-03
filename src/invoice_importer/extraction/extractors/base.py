@@ -4,21 +4,21 @@ from typing import Protocol
 
 from invoice_importer.extraction.types import (
     ContentType,
-    ExtractedText,
+    ExtractedDocument,
     SourceContent,
 )
 
 
 class TextExtractor(Protocol):
     """A strategy for extracting text from a SourceContent.
-    
+
     Implementations are typically synchronous (CPU-bound) and produce
-    an ExtractedText with the raw text plus metadata.
+    an ExtractedDocument with layout-preserving blocks plus metadata.
     """
-    
+
     @property
     def name(self) -> str:
-        """Identifier for this extractor, used in ExtractedText.extractor."""
+        """Identifier for this extractor, used in ExtractedDocument.extractor."""
         ...
     
     @property
@@ -26,6 +26,6 @@ class TextExtractor(Protocol):
         """Which content types this extractor can handle."""
         ...
     
-    def extract(self, source: SourceContent) -> ExtractedText:
+    def extract(self, source: SourceContent) -> ExtractedDocument:
         """Extract text. Raises TextExtractionFailedError on failure."""
         ...

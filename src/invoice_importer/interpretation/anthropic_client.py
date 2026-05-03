@@ -12,9 +12,7 @@ from invoice_importer.interpretation.prompts import (
     INVOICE_EXTRACTION_SYSTEM_PROMPT,
     build_user_message
 )
-from invoice_importer.extraction.types import (
-    ExtractedText
-)
+from invoice_importer.extraction.types import ExtractedText
 from invoice_importer.interpretation.types import LLMInterpretationError
 
 logger = logging.getLogger(__name__)

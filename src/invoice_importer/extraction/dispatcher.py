@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from invoice_importer.extraction.extractors.base import TextExtractor
 from invoice_importer.extraction.types import (
     ContentType,
-    ExtractedText,
+    ExtractedDocument,
     SourceContent,
     UnsupportedContentTypeError
 )
@@ -48,7 +48,7 @@ class ExtractionDispatcher:
         """All content types the dispatcher can handle."""
         return frozenset(self._by_content_type.keys())
 
-    def extract(self, source: SourceContent) -> ExtractedText:
+    def extract(self, source: SourceContent) -> ExtractedDocument:
         extractor = self._by_content_type.get(source.content_type)
         if extractor is None:
             supported = sorted(ct.value for ct in self._by_content_type)
