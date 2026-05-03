@@ -12,9 +12,9 @@ See [`../../../CLAUDE.md`](../../../CLAUDE.md) for project-wide rules.
 - `errors.py` — `InvoiceImporterError` (base) and the four lookup / duplicate
   subclasses: `VendorNotFoundError`, `InvoiceNotFoundError`,
   `DuplicateInvoiceError`, `DuplicateContentError`.
-
-No `__init__.py` (namespace package). If you add one, do it deliberately — see
-the repo-hygiene item in `TODO.md`.
+- `__init__.py` — re-exports the full public surface (every model, every
+  error, every type alias). Domain has no I/O cost to load, so the barrel
+  is exhaustive on purpose.
 
 ## Invariants
 
@@ -54,8 +54,6 @@ adapter layers and don't belong to the domain.
 
 ## Gotchas
 
-- `errors.py` contains a typo ("Invoice not foud") tracked in `TODO.md`. Do
-  not drive-by fix.
 - `CurrencyCode` is a closed enum. Extending it is a schema change that
   flows to the DB column and the LLM contract — treat it like a domain field
   edit, not a one-line tweak.

@@ -49,7 +49,7 @@ class ExtractionDispatcher:
         return frozenset(self._by_content_type.keys())
 
     def extract(self, source: SourceContent) -> ExtractedText:
-        extractor = self._by_content_type[source.content_type]
+        extractor = self._by_content_type.get(source.content_type)
         if extractor is None:
             supported = sorted(ct.value for ct in self._by_content_type)
             raise UnsupportedContentTypeError(

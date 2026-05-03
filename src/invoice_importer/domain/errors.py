@@ -15,7 +15,7 @@ class InvoiceNotFoundError(InvoiceImporterError):
 
     def __init__(self, identifier: str | int) -> None:
         self.identifier = identifier
-        super().__init__(f"Invoice not foud: {identifier!r}")
+        super().__init__(f"Invoice not found: {identifier!r}")
 
 
 class DuplicateInvoiceError(InvoiceImporterError):

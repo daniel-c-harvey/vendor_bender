@@ -26,6 +26,11 @@ See [`../../../CLAUDE.md`](../../../CLAUDE.md) for project-wide rules.
   `cluster_into_blocks`.
 - `dispatcher.py` — `ExtractionDispatcher` indexes extractors by content
   type at construction; rejects duplicate registration with `ValueError`.
+- `__init__.py` — re-exports the contracts (transport types, errors,
+  `TextExtractor` Protocol, `ExtractionDispatcher`). `PdfTextExtractor`
+  and `OcrExtractor` are *deliberately omitted* — re-exporting them would
+  force pdfplumber / rapidocr to load on any import from this layer.
+  Reach them at `extraction.extractors.pdf` / `.ocr` instead.
 
 ## Invariants
 
@@ -63,10 +68,6 @@ before forking the algorithm.
 
 ## Gotchas
 
-- **`UnsupportedContentTypeError` in `dispatcher.extract` is unreachable.**
-  The dict access `self._by_content_type[source.content_type]` raises
-  `KeyError` before the `if extractor is None` check can fire. Tracked in
-  `TODO.md` — do not drive-by fix.
 - **`pdfplumber` table detection is good for bordered tables, less so for
   borderless ones.** Words inside a table bbox are excluded from text
   clustering by a center-point test (not corner-overlap), so a word

@@ -14,8 +14,8 @@ invariants.
 - `importer.py` — `InvoiceImporter` with one async method,
   `import_invoice(source) -> Invoice`. Constructed once at startup with a
   dispatcher, an interpreter, and a session factory; reused per request.
-
-No `__init__.py` (namespace package — same as `domain/`).
+- `__init__.py` — re-exports `InvoiceImporter`. The class is the only
+  public name in this layer.
 
 ## Order of operations
 
